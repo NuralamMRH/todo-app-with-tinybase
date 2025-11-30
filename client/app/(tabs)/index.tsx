@@ -1,5 +1,5 @@
 import * as SQLite from "expo-sqlite";
-import { Button, FlatList, Pressable, SafeAreaView, View } from "react-native";
+import { Button, FlatList, Pressable, View } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import {
   useCreateMergeableStore,
@@ -13,11 +13,14 @@ import {
 import { createMergeableStore } from "tinybase/mergeable-store";
 import { createExpoSqlitePersister } from "tinybase/persisters/persister-expo-sqlite";
 import { createWsSynchronizer } from "tinybase/synchronizers/synchronizer-ws-client";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const TABLE_NAME = "tasks";
 
 const TEXT_CELL = "text";
 const DONE_CELL = "done";
+
+const db = SQLite.openDatabaseSync("tasks.db");
 
 function AddTask() {
   const store = useStore(TABLE_NAME);
@@ -38,6 +41,7 @@ function TaskList() {
   return (
     <FlatList
       data={sortedRowIds}
+      style={{ width: "100%" }}
       renderItem={({ item: id }) => {
         const task = store?.getRow(TABLE_NAME, id);
         return (
@@ -55,8 +59,7 @@ export default function HomeScreen() {
   const store = useCreateMergeableStore(() => createMergeableStore());
   useCreatePersister(
     store,
-    (store) =>
-      createExpoSqlitePersister(store, SQLite.openDatabaseSync("tasks.db")),
+    (store) => createExpoSqlitePersister(store, db),
     [],
     // @ts-ignore
     (persister) => persister.load().then(persister.startAutoSave)
@@ -64,8 +67,8 @@ export default function HomeScreen() {
   useCreateSynchronizer(store, async (store) => {
     const sync = await createWsSynchronizer(
       store,
-      new WebSocket("wss://server.betomoedano01.workers.dev/")
-      // new WebSocket("ws://localhost:8787/")
+      // new WebSocket("wss://server.betomoedano01.workers.dev/")
+      new WebSocket("ws://localhost:8787/")
     );
 
     await sync.startSync();
@@ -79,7 +82,7 @@ export default function HomeScreen() {
   useProvideStore(TABLE_NAME, store);
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={{ flex: 1, padding: 20, alignItems: "center" }}>
         <ThemedText type="title">Tasks</ThemedText>
         <AddTask />
         <TaskList />
